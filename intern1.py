@@ -6,16 +6,19 @@ Created on Wed Jun  4 22:48:35 2014
 """
 
 import pandas as pd
-
+#import seaborn as sns
 import matplotlib.pyplot as plt
+from sklearn.ensemble import RandomForestClassifier 
+from sklearn.cross_validation import cross_val_score
 import numpy as np
-
+from sklearn.preprocessing import Imputer
 
 path1 = "/home/supertramp/Desktop/100&life_180_data.csv"
 
 mydf =  pd.read_csv(path1)
 #xercise = sns.load_dataset(path1)
 
+#Next time use regular expressions
 mydf['Cigarettes'] = mydf['Cigarettes'].str.replace(' ', '')
 mydf['Cigarettes'] = mydf['Cigarettes'].str.replace('1-5','1-5Cigarettes/day')
 mydf['Cigarettes'] = mydf['Cigarettes'].str.replace('1-5Cigarettes/dayCigarettes/day','1-5Cigarettes/day')
@@ -72,18 +75,15 @@ mydf['Exercise'] = mydf['Exercise'].str.replace('Notapplicable','Ispendmostoftim
 
 mydf['bmi'] = mydf['BMI'].map(lambda x : 40  if x>=30 else 37 if x>=21 and x<=30 else 31 if x>20 and x<21 else 24 if x<=20 else 15)
 
+numcigar = {"Never":1.0 ,"1-5Cigarettes/day" :2.0,"10-20Cigarettes/day":3.0}
 
+num_eat = {"Eatonlyhomemadefood" :1.0 ,"Attheweekends" :2.0 ,"onceinaweek":3.0,"3-4daysaweek":4.0 ,"Occasionallyduringparties" :5.0,"Occasionallyduringparty":5.0,"Everyday":6.0}
 
+num_alco = {"Iamatee-totaler":1,"OccasionallywhenIgoforparties":2,"Icatchupfriendsintheweekendsforadrink":3,"Ispendmyeveningsatthesocialclubsandhaveadrink":-4}
 
-numcigar = {"Never":0 ,"1-5Cigarettes/day" :2.0,"10-20Cigarettes/day":3.0}
+num_meal = {"Ifollowfixedandregulartimingsallthetime":1,"Ifollowfixedtimingsduringtheworkweek":2,"IdonotfollowtheroutinetimingswhenIamtravelling":03,"Idonotsparetimeformeals;grabthemasandwhenpossible":4}
 
-num_eat = {"Eatonlyhomemadefood" :0.0 ,"Attheweekends" :0.0 ,"onceinaweek":0.0,"3-4daysaweek":0.5 ,"Occasionallyduringparties" :0.0,"Occasionallyduringparty":0.0,"Everyday":1.0}
-
-num_alco = {"Iamatee-totaler":0,"OccasionallywhenIgoforparties":0.0,"Icatchupfriendsintheweekendsforadrink":-0.05,"Ispendmyeveningsatthesocialclubsandhaveadrink":-0.15}
-
-num_meal = {"Ifollowfixedandregulartimingsallthetime":0,"Ifollowfixedtimingsduringtheworkweek":-0,"IdonotfollowtheroutinetimingswhenIamtravelling":0.5,"Idonotsparetimeformeals;grabthemasandwhenpossible":1}
-
-num_exer = {"Myroutinedaystartswithexercisesandyoga":-3,"Ispend2hoursatthegym/playtennis,shuttle3-4time...":-3,"Ispendmostoftimeatworkandspendaquietweekend":0,"Iplaywithfamilyandfriendsonlyduringtheweekend":0}
+num_exer = {"Myroutinedaystartswithexercisesandyoga":-1,"Ispend2hoursatthegym/playtennis,shuttle3-4time...":-2,"Ispendmostoftimeatworkandspendaquietweekend":3,"Iplaywithfamilyandfriendsonlyduringtheweekend":4}
 
 mydf['EatNum'] = mydf['Eating Out'].replace(num_eat).astype(float)
 
@@ -97,22 +97,77 @@ mydf['MealNum'] = mydf['Meal Timings'].replace(num_meal).astype(float)
 
 mydf['ExerNum'] = mydf['Exercise'].replace(num_exer).astype(float)
 
-print 'cdd'
-print mydf[mydf.Age.map(lambda x :  x>55)]
+#print mydf[mydf.Age.map(lambda x : x>45 and  x<55)]
 
-new_data = mydf.drop(['Eating Out', 'Meal Timings','Exercise','Alcohol','Cigarettes','BMI'], axis=1)
-
-
+new_data = mydf.drop(['Eating Out', 'Meal Timings','Exercise','Alcohol','Cigarettes'], axis=1)
 
 new_data['Score'] = new_data.sum(axis=01) -new_data['Age'] -new_data['No']
-
-
-
-
 
 final_data = mydf.drop(['EatNum','CigarNum','AlcoNum','MealNum','ExerNum','bmi'],axis=1) 
 final_data['Predicted Age'] = new_data['Score']
 
+print new_data
+
+target = new_data.drop(['No', 'BMI' , 'bmi'  ,'EatNum' , 'CigarNum'  ,'AlcoNum',  'MealNum' , 'ExerNum'  ,'Score'],axis=1)
+
+data = new_data.drop(['bmi', 'Age','No','Score'],axis=1)
+
+data = data.fillna(1)
+
+################################################################################
+"""
+forest = RandomForestClassifier(n_estimators = 100)
+
+# Fit the training data to the Survived labels and create the decision trees
+forest = forest.fit(new_data[0::,1::],new_data[0::,0])
+
+columns = ['BMI','ExerNum','AlcoNum','CigarNum']
+features = mydf[list(columns)].values
+labels = mydf['Age'].values
+
+test_df = new_data
+
+
+forest = forest.fit(features, labels)
+forest.predict(test_df[columns].values)
+et_score = cross_val_score(forest, features, labels, n_jobs=-1).mean()
+
+imp = Imputer(missing_values='NaN', strategy='mean', axis=0)
+imp.fit(features)
+
+ 
+forest.fit(features, labels)
+predictions =  forest.predict(imp.transform(test_df[columns].values))
+test_df["Age"] = pd.Series(predictions)
+"""
+
+###########################################
+
+#from sklearn import datasets
+#iris = datasets.load_iris()
+#from sklearn.naive_bayes import GaussianNB
+#gnb = GaussianNB()
+#print iris.target
+#
+#y_pred = gnb.fit(iris.data, iris.target).predict(iris.data)
+#print("Number of mislabeled points : %d" % (iris.target != y_pred).sum())
+#
+#print y_pred
+############################################
+
+columns = ['BMI','CigarNum'  ,'AlcoNum',  'MealNum' , 'ExerNum','EatNum']
+
+
+from sklearn.naive_bayes import GaussianNB
+gnb = GaussianNB()
+
+print target['Age'].values
+y_pred = gnb.fit(data[list(columns)].values, target['Age'].values).predict(data[list(columns)].values)
+print("Number of mislabeled points : %d" % (target['Age'].values != y_pred).sum())
+
+print y_pred
+
+###############################################################33
 
 N = len(new_data['Age'])
 
@@ -120,8 +175,8 @@ ind = np.arange(N)  # the x locations for the groups
 width = 0.35       # the width of the bars
 
 fig, ax = plt.subplots()
-rects2 = ax.bar(ind, new_data['Score'], width, color='r')
-#rects1 = ax.bar(int+width,new_data.accurate,width,color='y')
+#rects2 = ax.bar(ind, new_data['Score'], width, color='r')
+rects2 = ax.bar(ind, y_pred, width, color='r')
 
 rects1 = ax.bar(ind+width,new_data.Age, width, color='y')
 ax.set_ylabel('Age')
@@ -143,6 +198,11 @@ autolabel(rects2)
 
 plt.show()
 
+
+final_data['Predicted Age'] =y_pred
+
+
 final_data.to_csv('/home/supertramp/Desktop/alldata22.csv')
 
 print 'Done'
+
